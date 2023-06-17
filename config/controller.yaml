@@ -1,5 +1,8 @@
 controllers:
+  joint_state_controller:
+    type: joint_state_controller/JointStateController
+    publish_rate: 100
   joint_position_controller:
     type: effort_controllers/JointPositionController
     joint: "yaw_joint"
-    pid: { p: 20, i: 0, d: 0.82, i_clamp_max: 0.3, i_clamp_min: -0.3, antiwindup: true, publish_state: true }
+    pid: { p: 12, i: 0, d: 0.1, i_clamp_max: 0.3, i_clamp_min: -0.3, antiwindup: true, publish_state: true }

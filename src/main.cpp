@@ -27,6 +27,8 @@ int main(int argc, char** argv)
     nh.getParam("command_topic",topic_name);
     ros::Publisher command_publisher = nh.advertise<std_msgs::Float64>(topic_name,10);
 
+    double magnitude = 1.0;
+    nh.getParam("magnitude",magnitude);
     std::vector<double> frequency_points;
     XmlRpc::XmlRpcValue frequency_points_config;
     nh.getParam("frequency_points",frequency_points_config);
@@ -57,7 +59,7 @@ int main(int argc, char** argv)
             }
           }
           if(status == stimulus_signal_publisher::SetPublisherStatusRequest::START)
-            command.data = std::sin(2 * M_PI * *current_point_it * (ros::Time::now() - start_time).toSec());
+            command.data = magnitude * std::sin(2 * M_PI * *current_point_it * (ros::Time::now() - start_time).toSec());
         }
         if(status == stimulus_signal_publisher::SetPublisherStatusRequest::RESET)
           command.data = 0.;
