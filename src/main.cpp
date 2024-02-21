@@ -1,70 +1,51 @@
 #include <ros/ros.h>
 #include <std_msgs/Float64.h>
-#include "stimulus_signal_publisher/SetPublisherStatus.h"
-
-int status = stimulus_signal_publisher::SetPublisherStatus::Request::RESET;
-ros::Time start_time;
-
-bool setPublisherStatus(stimulus_signal_publisher::SetPublisherStatus::Request& req,stimulus_signal_publisher::SetPublisherStatus::Response& res)
-{
-    if(status == stimulus_signal_publisher::SetPublisherStatus::Request::RESET && req.status == stimulus_signal_publisher::SetPublisherStatus::Request::START)
-        start_time = ros::Time::now();
-    status = req.status;
-    res.is_success = true;
-    ROS_INFO("Switch to status: %d",status);
-    return true;
-}
+#include "stimulus_signal_publisher/signal_producer.h"
 
 int main(int argc, char** argv)
 {
-    ros::init(argc,argv,"stimulus_signal_publisher");
-    ros::NodeHandle nh("~");
+  ros::init(argc, argv, "stimulus_signal_publisher");
+  ros::NodeHandle nh("~");
 
-    ros::ServiceServer service = nh.advertiseService("set_publisher_status",setPublisherStatus);
-    ROS_INFO("Ready to set status.");
+  std::string topic_name;
+  nh.getParam("command_topic", topic_name);
+  ros::Publisher command_publisher = nh.advertise<std_msgs::Float64>(topic_name, 10);
 
-    std::string topic_name;
-    nh.getParam("command_topic",topic_name);
-    ros::Publisher command_publisher = nh.advertise<std_msgs::Float64>(topic_name,10);
+  std::string signal;
+  nh.getParam("signal", signal);
 
+  stimulus_signal_publisher::SignalProducerBase* signal_producer;
+  if (signal.find("sin_wave") != std::string::npos)
+  {
     double magnitude = 1.0;
-    nh.getParam("magnitude",magnitude);
-    std::vector<double> frequency_points;
+    nh.getParam("magnitude", magnitude);
     XmlRpc::XmlRpcValue frequency_points_config;
-    nh.getParam("frequency_points",frequency_points_config);
-    ROS_ASSERT(frequency_points_config.getType() == XmlRpc::XmlRpcValue::TypeArray);
-    frequency_points.reserve(frequency_points_config.size());
-    for(int i = 0; i < frequency_points_config.size(); i++)
-        frequency_points.push_back(frequency_points_config[i]);
-    auto current_point_it = frequency_points.begin();
-    ros::Rate loop_rate(500);
-    while (ros::ok())
-    {
-        ros::spinOnce();
-        std_msgs::Float64 command;
-        if(status == stimulus_signal_publisher::SetPublisherStatusRequest::START)
-        {
-          if((ros::Time::now() - start_time).toSec() >= 20 * 1 / *current_point_it)
-          {
-            if((current_point_it + 1) == frequency_points.end())
-            {
-              status =
-                  stimulus_signal_publisher::SetPublisherStatusRequest::RESET;
-              current_point_it = frequency_points.begin();
-            }
-            else
-            {
-              start_time = start_time + ros::Duration(20 * 1 / *current_point_it);
-              current_point_it++;
-            }
-          }
-          if(status == stimulus_signal_publisher::SetPublisherStatusRequest::START)
-            command.data = magnitude * std::sin(2 * M_PI * *current_point_it * (ros::Time::now() - start_time).toSec());
-        }
-        if(status == stimulus_signal_publisher::SetPublisherStatusRequest::RESET)
-          command.data = 0.;
-        command_publisher.publish(command);
-        loop_rate.sleep();
-    }
-    return 0;
+    nh.getParam("frequency_points", frequency_points_config);
+    signal_producer = new stimulus_signal_publisher::SinWave(magnitude, frequency_points_config, nh);
+  }
+  else if (signal.find("constant_velocity") != std::string::npos)
+  {
+    double start_point = 0;
+    nh.getParam("start_point", start_point);
+    double end_point = 0;
+    nh.getParam("end_point", end_point);
+    XmlRpc::XmlRpcValue velocity_config;
+    nh.getParam("velocity", velocity_config);
+    signal_producer = new stimulus_signal_publisher::ConstantVelocity(start_point, end_point, velocity_config, nh);
+  }
+  else
+  {
+    return 1;
+  }
+  ros::Rate loop_rate(500);
+  while (ros::ok())
+  {
+    ros::spinOnce();
+    std_msgs::Float64 command;
+    command.data = signal_producer->output();
+    command_publisher.publish(command);
+    loop_rate.sleep();
+  }
+  delete signal_producer;
+  return 0;
 }

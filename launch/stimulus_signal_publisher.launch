@@ -1,4 +1,4 @@
 <launch>
-    <rosparam file="$(find stimulus_signal_publisher)/config/frequency_point.yaml" command="load"/>
+    <rosparam file="$(find stimulus_signal_publisher)/config/publisher_config.yaml" command="load"/>
     <node name="stimulus_signal_publisher" pkg="stimulus_signal_publisher" type="stimulus_signal_publisher" respawn="false"/>
 </launch>

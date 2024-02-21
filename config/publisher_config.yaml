@@ -1,0 +1,8 @@
+stimulus_signal_publisher:
+  signal: constant_velocity
+  start_point: -1.57
+  end_point: 1.57
+  velocity: [ 0.8, 1.1, 1.4, 1.7]
+  frequency_points: [ 0.3 ]
+  command_topic: /controllers/joint_position_controller/command
+  magnitude: 0.3
